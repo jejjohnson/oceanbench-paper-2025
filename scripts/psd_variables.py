@@ -1,47 +1,41 @@
+from datetime import datetime
+from pathlib import Path
+from typing import Callable, Optional
+
 import autoroot
-import xarray as xr
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import cmocean
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
-
-from typing import Callable, Optional
-import cmocean
-from datetime import datetime
-from matplotlib import ticker
 import pandas as pd
-import cartopy.crs as ccrs
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-import cartopy.feature as cfeature
-from matplotlib.colors import LinearSegmentedColormap
 import seaborn as sns
+import xarray as xr
+from cartopy.mpl.gridliner import LATITUDE_FORMATTER, LONGITUDE_FORMATTER
+from matplotlib import ticker
+from matplotlib.colors import LinearSegmentedColormap
+
 from src.preprocessing import region as region_fn
+
 sns.reset_defaults()
 sns.set_context(context="talk", font_scale=0.7)
 from dataclasses import dataclass, field
-from loguru import logger
-
-from src.types import generate_wednesdays_in_year
-from src.preprocessing import (
-    latlon_deg2m,
-    rectilinear_to_regular_grid,
-    time_rescale,
-    validate_latitude,
-    validate_longitude,
-    xr_cond_average,
-    fuse_base_coords
-)
-from src.psd import zonal_lon_psd, space_time_psd, isotropic_psd
-
-from tqdm.auto import tqdm
 from functools import partial
-from src.types import ForecastDataset, DiagnosticDataset, ReAnalysis
-from src.plotting import PlotterContour
-from cyclopts import App
+
 import matplotlib.pyplot as plt
-
-from loguru import logger
-
+from cyclopts import App
 from distributed import Client
+from loguru import logger
+from tqdm.auto import tqdm
+
+from src.plotting import PlotterContour
+from src.preprocessing import (fuse_base_coords, latlon_deg2m,
+                               rectilinear_to_regular_grid, time_rescale,
+                               validate_latitude, validate_longitude,
+                               xr_cond_average)
+from src.psd import isotropic_psd, space_time_psd, zonal_lon_psd
+from src.types import (DiagnosticDataset, ForecastDataset, ReAnalysis,
+                       generate_wednesdays_in_year)
 
 app = App()
 
@@ -86,10 +80,12 @@ def load_and_preprocess_dataset(
         # expand dimensions
         ds = ds.expand_dims("time")
         # assign coordinates as time
-        ds = ds.assign_coords({"time": np.atleast_1d(t0), "lead_time": np.arange(1, 11)})
+        ds = ds.assign_coords(
+            {"time": np.atleast_1d(t0), "lead_time": np.arange(1, 11)}
+        )
         return ds
 
-    dates = [w.strftime('%Y%m%d') for w in generate_wednesdays_in_year(year)]
+    dates = [w.strftime("%Y%m%d") for w in generate_wednesdays_in_year(year)]
     logger.info("Initializing Dataset")
     forecast_config = ForecastDataset()
     demo_model = forecast_config.models[model]
@@ -98,7 +94,9 @@ def load_and_preprocess_dataset(
     paths = [str(demo_model.forecast_path(idate)) for idate in dates]
     fn = partial(preprocess_all_leadtime_fn, idepth=idepth)
     logger.info("Opening Dataset")
-    model_results = xr.open_mfdataset(paths, preprocess=fn, combine="by_coords", engine="zarr")
+    model_results = xr.open_mfdataset(
+        paths, preprocess=fn, combine="by_coords", engine="zarr"
+    )
     da = model_results[variable]
     da = demo_variable.correct_real_attrs(da)
     logger.info("Doing Preprocessing")
@@ -112,13 +110,13 @@ def psd_zonal_run_postanalysis(
     variable: str = "zos",
     save_path: str | None = None,
     region: str = "gulfstream",
-    ):
+):
 
     logger.info(f"Starting Script")
     logger.info(f"Model: {model}")
     logger.info(f"Variable: {variable}")
     logger.info(f"Save Path: {save_path}")
-    
+
     # Usage in the command:
     da, idepth = load_and_preprocess_dataset(model, variable, region)
 
@@ -145,7 +143,7 @@ def psd_zonal_run_plots(
     variable: str = "zos",
     save_path: str | None = None,
     region: str = "gulfstream",
-    ):
+):
     models = ["glorys12", "glo12", "glonet", "wenhai", "xihe"]
     logger.info(f"Starting Script")
     logger.info(f"Variable: {variable}")
@@ -154,34 +152,34 @@ def psd_zonal_run_plots(
         path = Path(f"{autoroot.root.joinpath('data/psd/zonallon')}")
     else:
         path = Path(f"{Path(save_path).joinpath('data/psd/zonallon')}")
-    
+
     pbar = tqdm(models)
-    
+
     forecast_config = ForecastDataset()
-    
+
     idepth = 0
     ilead = 0
-    
+
     from src.psd import PlotPSDIsotropic
-    
+
     psd_iso_plot = PlotPSDIsotropic()
 
     psd_iso_plot.init_fig(figsize=(5, 4))
-    
+
     with pbar:
         for imodel in pbar:
-            
+
             # load the data
             save_name = Path(f"psd_zonallon_{region}_{variable}_{imodel}_z{idepth}.nc")
             save_name = path.joinpath(save_name)
-            
+
             try:
-            
+
                 da = xr.open_dataset(str(save_name), engine="netcdf4")
             except FileNotFoundError:
                 logger.error(f"File not found: {save_name}")
                 continue
-                
+
             config = forecast_config.models[imodel]
             da = da[imodel]
             psd_iso_plot.plot_wavelength(
@@ -191,8 +189,7 @@ def psd_zonal_run_plots(
                 label=config.name.upper(),
                 color=config.color,
             )
-            
-    
+
     if save_path is None:
         path = Path(f"{autoroot.root.joinpath('figures/psd/zonallon')}")
     else:
@@ -201,9 +198,8 @@ def psd_zonal_run_plots(
     path.mkdir(parents=True, exist_ok=True)
     save_name = Path(f"psd_{region}_{variable}_z{idepth}_l{ilead}.png")
     save_name = path.joinpath(save_name)
-    psd_iso_plot.fig.savefig(save_name, bbox_inches='tight', transparent=True)
+    psd_iso_plot.fig.savefig(save_name, bbox_inches="tight", transparent=True)
     # plt.close()
-
 
     logger.success("Finished script!")
 
@@ -216,29 +212,26 @@ def psd_spacetime_run_postanalysis(
     region: str = "gulfstream",
 ):
 
-
     logger.info(f"Starting Script")
     logger.info(f"Model: {model}")
     logger.info(f"Variable: {variable}")
     logger.info(f"Region: {region}")
     logger.info(f"Save Path: {save_path}")
-    
 
     # Usage in the command:
     da, idepth = load_and_preprocess_dataset(model, variable, region)
-
 
     logger.info("Running Zonal PSD")
     psd_st_signal = space_time_psd(da)
 
     logger.info("Saving Data...")
     psd_st_signal.name = model
-    
+
     if save_path is None:
         path = Path(f"{autoroot.root.joinpath('data/psd/spacetime')}")
     else:
         path = Path(f"{Path(save_path).joinpath('data/psd/spacetime')}")
-        
+
     path.mkdir(parents=True, exist_ok=True)
     save_name = Path(f"psd_spacetime_{region}_{variable}_{model}_z{idepth}.nc")
     save_name = path.joinpath(save_name)
@@ -246,7 +239,6 @@ def psd_spacetime_run_postanalysis(
     psd_st_signal.to_netcdf(str(save_name))
 
     logger.success("Finished script!")
-    
 
 
 @app.command
@@ -255,7 +247,7 @@ def psd_spacetime_run_plots(
     save_path: str | None = None,
     load_path: str | None = None,
     region: str = "gulfstream",
-    ):
+):
     models = ["glorys12", "glo12", "glonet", "wenhai", "xihe"]
     logger.info(f"Starting Script")
     logger.info(f"Variable: {variable}")
@@ -270,49 +262,52 @@ def psd_spacetime_run_plots(
     else:
         save_path = Path(f"{Path(save_path).joinpath('figures/psd/spacetime')}")
     save_path.mkdir(parents=True, exist_ok=True)
-    
+
     pbar = tqdm(models)
-    
+
     forecast_config = ForecastDataset()
-    
+
     idepth = 0
     ilead = 0
-    
-    
+
     with pbar:
         for imodel in pbar:
-            
+
             # load the data
             save_name = Path(f"psd_spacetime_{region}_{variable}_{imodel}_z{idepth}.nc")
             save_name = load_path.joinpath(save_name)
-            
+
             try:
-            
+
                 da = xr.open_dataset(str(save_name), engine="netcdf4")
             except FileNotFoundError:
                 logger.error(f"File not found: {save_name}")
                 continue
-                
+
             from src.psd import PlotPSDSpaceTime
-            
+
             da = da[imodel]
 
             psd_st_plot = PlotPSDSpaceTime()
             psd_st_plot.init_fig(figsize=(5, 4))
-            
+
             psd_st_plot.plot_wavelength(
                 da.isel(lead_time=ilead),
-                space_scale=1e3, 
-                space_units="km", 
+                space_scale=1e3,
+                space_units="km",
                 time_units="days",
                 psd_units="SSH",
             )
 
-            file_save_path = save_path.joinpath(f"psd_spacetime_{region}_{imodel}_{variable}_z{idepth}_l{ilead}.png")
-            psd_st_plot.fig.savefig(file_save_path, bbox_inches='tight', transparent=True)
-            
+            file_save_path = save_path.joinpath(
+                f"psd_spacetime_{region}_{imodel}_{variable}_z{idepth}_l{ilead}.png"
+            )
+            psd_st_plot.fig.savefig(
+                file_save_path, bbox_inches="tight", transparent=True
+            )
 
     logger.success("Finished script!")
+
 
 @app.command
 def psd_isotropic_run_postanalysis(
@@ -322,29 +317,26 @@ def psd_isotropic_run_postanalysis(
     region: str = "gulfstream",
 ):
 
-
     logger.info(f"Starting Script")
     logger.info(f"Model: {model}")
     logger.info(f"Variable: {variable}")
     logger.info(f"Region: {region}")
     logger.info(f"Save Path: {save_path}")
-    
 
     # Usage in the command:
     da, idepth = load_and_preprocess_dataset(model, variable, region)
-
 
     logger.info("Running Zonal PSD")
     psd_st_signal = isotropic_psd(da)
 
     logger.info("Saving Data...")
     psd_st_signal.name = model
-    
+
     if save_path is None:
         path = Path(f"{autoroot.root.joinpath('data/psd/spacetime')}")
     else:
         path = Path(f"{Path(save_path).joinpath('data/psd/spacetime')}")
-        
+
     path.mkdir(parents=True, exist_ok=True)
     save_name = Path(f"psd_isotropic_{region}_{variable}_{model}_z{idepth}.nc")
     save_name = path.joinpath(save_name)

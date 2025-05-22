@@ -1,15 +1,16 @@
-from typing import Optional, Union, List
-import xarray as xr
+from datetime import datetime, timedelta
+from functools import reduce
+from typing import List, Optional, Union
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+import xarray as xr
 from metpy.calc import lat_lon_grid_deltas
 from metpy.units import units
-from functools import reduce
 
 
 def region(ds, region: str = "globe"):
-    
+
     if region:
         if region == "globe":
             return ds
@@ -62,16 +63,15 @@ def rectilinear_to_regular_grid(ds, target_grid: xr.Dataset | None = None, **kwa
     if not target_grid:
         lat_min, lat_max = ds.lat.min().item(), ds.lat.max().item()
         lon_min, lon_max = ds.lon.min().item(), ds.lon.max().item()
-        
+
         # Approximate resolution (assume uniform spacing)
         dlat = np.abs(ds.lat[1] - ds.lat[0]).mean().item()
         dlon = np.abs(ds.lon[1] - ds.lon[0]).mean().item()
-        
+
         # Create new regular grid
         lat_new = np.arange(lat_min, lat_max + dlat, dlat)
         lon_new = np.arange(lon_min, lon_max + dlon, dlon)
-        target_grid = xr.Dataset({'lat': (['lat'], lat_new),
-                               'lon': (['lon'], lon_new)})
+        target_grid = xr.Dataset({"lat": (["lat"], lat_new), "lon": (["lon"], lon_new)})
 
     # regridder = xe.Regridder(ds, target_grid, method=method)
     # ds_reg = regridder(ds, keep_attrs=True)
@@ -189,7 +189,6 @@ def validate_longitude(ds: xr.Dataset) -> xr.Dataset:
                 standard_name="longitude",
                 long_name="Longitude",
             ),
-            
         }
     )
 
@@ -218,14 +217,21 @@ def validate_latitude(ds: xr.Dataset) -> xr.Dataset:
 
     return new_ds
 
-def fuse_base_coords(ds, variable: str,):
+
+def fuse_base_coords(
+    ds,
+    variable: str,
+):
     # fix the MLD coordinates...
     try:
-        ds[variable] = ds.drop_vars(["latitude", "longitude"])[variable].rename({"latitude": "lat", "longitude": "lon"})
+        ds[variable] = ds.drop_vars(["latitude", "longitude"])[variable].rename(
+            {"latitude": "lat", "longitude": "lon"}
+        )
         ds = ds.drop_vars(["latitude", "longitude"])
     except ValueError:
         pass
     return ds
+
 
 def _rename_longitude(ds):
     try:
@@ -233,6 +239,7 @@ def _rename_longitude(ds):
     except:
         pass
     return ds
+
 
 def _rename_latitude(ds):
     try:

@@ -1,14 +1,11 @@
-from typing import Callable, Dict, List
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from typing import Callable, Dict, List
+
+import cmocean
 import copernicusmarine as cmc
 import numpy as np
 import xarray as xr
-import cmocean
-
-
-
-
 
 
 # Generate all Wednesdays in 2024
@@ -18,6 +15,7 @@ def generate_wednesdays_in_year(year: int = 2024):
     while d.year == year:
         yield d
         d += timedelta(days=7)
+
 
 @dataclass
 class Model:
@@ -30,29 +28,40 @@ class Model:
 
     def forecast_path(self, year: str = "20240103"):
         return f"{self.forecast}{year}.zarr"
+
     def diagnostic_path(self, year: str = "20240103"):
         return f"{self.diagnostic}{year}.zarr"
+
     def trajectories_path(self, year: str = "20240103"):
         return f"{self.trajectories}{year}.zarr"
-            
-
 
 
 @dataclass
 class GLONET(Model):
     name: str = "glonet"
-    forecast: str = "https://minio.dive.edito.eu/project-oceanbench/public/glonet_full_2024/"
-    diagnostic: str = "https://minio.dive.edito.eu/project-oceanbench/public/tmp/GLONET/process/"
-    trajectories: str = "https://minio.dive.edito.eu/project-oceanbench/public/tmp/GLONET/trajs/"
+    forecast: str = (
+        "https://minio.dive.edito.eu/project-oceanbench/public/glonet_full_2024/"
+    )
+    diagnostic: str = (
+        "https://minio.dive.edito.eu/project-oceanbench/public/tmp/GLONET/process/"
+    )
+    trajectories: str = (
+        "https://minio.dive.edito.eu/project-oceanbench/public/tmp/GLONET/trajs/"
+    )
     color: str = "blue"
     linestyle: str = "--"
+
 
 @dataclass
 class GLO12(Model):
     name: str = "glo12"
     forecast: str = "https://minio.dive.edito.eu/project-oceanbench/public/GLO12/"
-    diagnostic: str = "https://minio.dive.edito.eu/project-oceanbench/public/tmp/GLO12/process/"
-    trajectories: str = "https://minio.dive.edito.eu/project-oceanbench/public/tmp/GLO12/trajs/"
+    diagnostic: str = (
+        "https://minio.dive.edito.eu/project-oceanbench/public/tmp/GLO12/process/"
+    )
+    trajectories: str = (
+        "https://minio.dive.edito.eu/project-oceanbench/public/tmp/GLO12/trajs/"
+    )
     color: str = "red"
     linestyle: str = "-"
 
@@ -61,8 +70,12 @@ class GLO12(Model):
 class WENHAI(Model):
     name: str = "wenhai"
     forecast: str = "https://minio.dive.edito.eu/project-oceanbench/public/WENHAI/"
-    diagnostic: str = "https://minio.dive.edito.eu/project-oceanbench/public/tmp/WENHAI/process/"
-    trajectories: str = "https://minio.dive.edito.eu/project-oceanbench/public/tmp/WENHAI/trajs/"
+    diagnostic: str = (
+        "https://minio.dive.edito.eu/project-oceanbench/public/tmp/WENHAI/process/"
+    )
+    trajectories: str = (
+        "https://minio.dive.edito.eu/project-oceanbench/public/tmp/WENHAI/trajs/"
+    )
     color: str = "orange"
     linestyle: str = ".-"
 
@@ -71,14 +84,18 @@ class WENHAI(Model):
 class XIHE(Model):
     name: str = "xihe"
     forecast: str = "https://minio.dive.edito.eu/project-oceanbench/public/XIHE/"
-    diagnostic: str = "https://minio.dive.edito.eu/project-oceanbench/public/tmp/XIHE/process/"
-    trajectories: str = "https://minio.dive.edito.eu/project-oceanbench/public/tmp/XIHE/trajs/"
+    diagnostic: str = (
+        "https://minio.dive.edito.eu/project-oceanbench/public/tmp/XIHE/process/"
+    )
+    trajectories: str = (
+        "https://minio.dive.edito.eu/project-oceanbench/public/tmp/XIHE/trajs/"
+    )
     color: str = "green"
     linestyle: str = "--"
 
 
 MODELS = {"glonet": GLONET(), "glo12": GLO12(), "wenhai": WENHAI(), "xihe": XIHE()}
-    
+
 
 @dataclass
 class Variable:
@@ -102,7 +119,6 @@ class Variable:
         da.attrs["long_name"] = self.long_name
         return da
 
-    
 
 @dataclass
 class SeaSurfaceHeight(Variable):
@@ -113,6 +129,7 @@ class SeaSurfaceHeight(Variable):
     cmap: str = "viridis"
     levels: int = 5
     linestyles: str | Callable = lambda levels: np.where(levels >= 0, "-", "--")
+
 
 @dataclass
 class Temperature(Variable):
@@ -125,14 +142,13 @@ class Temperature(Variable):
     linestyles: str = "-"
 
 
-
 @dataclass
 class Salinity(Variable):
     name: str = "so"
     standard_name: str = "sea_water_salinity"
     long_name: str = "Sea Water Salinity"
     units: str = "PSU"
-    cmap: str = field(default_factory=lambda: cmocean.cm.haline) #"YlGnBu_r"
+    cmap: str = field(default_factory=lambda: cmocean.cm.haline)  # "YlGnBu_r"
     levels: int = 5
     linestyles: str = "-"
 
@@ -143,7 +159,7 @@ class MixedLayerDepth(Variable):
     standard_name: str = "mixed_layer_depth"
     long_name: str = "Mixed Layer Depth"
     units: str = "m"
-    cmap: str = field(default_factory=lambda: cmocean.cm.deep) #"YlGnBu_r"
+    cmap: str = field(default_factory=lambda: cmocean.cm.deep)  # "YlGnBu_r"
     levels: int = 5
     linestyles: str = "-"
 
@@ -154,9 +170,10 @@ class ZonalVelocity(Variable):
     standard_name: str = "zonal_current"
     long_name: str = "Zonal Current"
     units: str = "m/s"
-    cmap: str = field(default_factory=lambda: cmocean.cm.speed) #"YlGnBu_r"
+    cmap: str = field(default_factory=lambda: cmocean.cm.speed)  # "YlGnBu_r"
     levels: int = 5
     linestyles: str = "-"
+
 
 @dataclass
 class MeridionalVelocity(ZonalVelocity):
@@ -164,11 +181,13 @@ class MeridionalVelocity(ZonalVelocity):
     standard_name: str = "meridional_current"
     long_name: str = "Meridional Current"
 
+
 @dataclass
 class GeostrophicZonalVelocity(ZonalVelocity):
     name: str = "u_geo"
     standard_name: str = "geostrophic_eastward_sea_water_velocity"
     long_name: str = "Geostrophic Zonal Velocity"
+
 
 @dataclass
 class GeostrophicMeridionalVelocity(ZonalVelocity):
@@ -176,12 +195,13 @@ class GeostrophicMeridionalVelocity(ZonalVelocity):
     standard_name: str = "geostrophic_northward_sea_water_velocity"
     long_name: str = "Geostrophic Meridional Velocity"
 
+
 FORECAST_VARIABLES = {
     "zos": SeaSurfaceHeight(),
     "thetao": Temperature(),
     "uo": ZonalVelocity(),
     "vo": MeridionalVelocity(),
-    "so": Salinity()
+    "so": Salinity(),
 }
 DIAGNOSTIC_VARIABLES = {
     "MLD": MixedLayerDepth(),
@@ -190,10 +210,12 @@ DIAGNOSTIC_VARIABLES = {
 }
 TRAJECTORY_VARIABLES = ["lat", "lon"]
 
+
 @dataclass
 class ForecastDataset:
     models: Dict[str, Model] = field(default_factory=lambda: MODELS)
     variables: List[Variable] = field(default_factory=lambda: FORECAST_VARIABLES)
+
 
 @dataclass
 class DiagnosticDataset:
@@ -206,8 +228,11 @@ class TrajectoriesDataset:
     models: Dict[str, Model] = field(default_factory=lambda: MODELS)
     variables: List[Variable] = field(default_factory=lambda: TRAJECTORY_VARIABLES)
 
-import copernicusmarine as cmc
+
 from datetime import datetime
+
+import copernicusmarine as cmc
+
 
 @dataclass
 class ReAnalysis:
@@ -216,13 +241,14 @@ class ReAnalysis:
     linestyle: str = "-"
 
     def load_data(
-        self, variable: str = "zos",
-        date: datetime = datetime(2020,1,4),
-        depth: float=0.49,
+        self,
+        variable: str = "zos",
+        date: datetime = datetime(2020, 1, 4),
+        depth: float = 0.49,
     ):
         depth_min, depth_max = depth - 0.01, depth + 0.01
         data = cmc.open_dataset(
-            dataset_id="cmems_mod_glo_phy_myint_0.083deg_P1D-m", #"cmems_mod_glo_phy_my_0.083deg_P1D-m",
+            dataset_id="cmems_mod_glo_phy_myint_0.083deg_P1D-m",  # "cmems_mod_glo_phy_my_0.083deg_P1D-m",
             variables=[variable],
             minimum_longitude=-180,
             maximum_longitude=180,
@@ -231,7 +257,6 @@ class ReAnalysis:
             minimum_depth=depth_min,
             maximum_depth=depth_max,
             start_datetime=date,
-            end_datetime=date
+            end_datetime=date,
         )
         return data
-        
