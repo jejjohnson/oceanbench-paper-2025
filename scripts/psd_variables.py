@@ -19,8 +19,8 @@ sns.set_context(context="talk", font_scale=0.7)
 from dataclasses import dataclass, field
 from loguru import logger
 
-from utils.types import generate_wednesdays_in_year
-from utils.preprocessing import (
+from src.types import generate_wednesdays_in_year
+from src.preprocessing import (
     latlon_deg2m,
     rectilinear_to_regular_grid,
     time_rescale,
@@ -29,20 +29,20 @@ from utils.preprocessing import (
     xr_cond_average,
     fuse_base_coords
 )
-from utils.psd import zonal_lon_psd, space_time_psd
+from src.psd import zonal_lon_psd, space_time_psd
 
 from tqdm.auto import tqdm
 from functools import partial
-from utils.types import ForecastDataset, DiagnosticDataset, ReAnalysis
-from utils.plotting import PlotterContour
+from src.types import ForecastDataset, DiagnosticDataset, ReAnalysis
+from src.plotting import PlotterContour
 from cyclopts import App
 import matplotlib.pyplot as plt
 
 from loguru import logger
 
 from distributed import Client
-client = Client('scheduler:8786')
-logger.log(f"Client: 127.0.0.1:8786 | scheduler:8786")
+# client = Client()
+# logger.log(f"Client: 127.0.0.1:8786 | scheduler:8786")
 
 app = App()
 
@@ -155,10 +155,10 @@ def psd_zonal_run_postanalysis(
     psd_iso_signal = zonal_lon_psd(da)
 
     logger.info("Saving Data...")
-    psd_iso_signal.name = imodel.name
-    path = Path("/home/onyxia/work/OceanBenchFigures/psd/zonal_lon/data")
+    psd_iso_signal.name = model
+    path = Path(f"{autoroot.root.joinpath('data/psd/zonal_lon')}")
     path.mkdir(parents=True, exist_ok=True)
-    save_name = Path(f"psd_zonallon_global_{ivariable.name}_{imodel.name}_z{idepth}.nc")
+    save_name = Path(f"psd_zonallon_global_{variable}_{model}_z{idepth}.nc")
     save_name = path.joinpath(save_name)
     logger.debug(f"Saved path: {save_name}")
     psd_iso_signal.to_netcdf(str(save_name))
@@ -170,7 +170,7 @@ def psd_zonal_run_postanalysis(
 def psd_spacetime_run_postanalysis(
     model: str = "glo12",
     variable: str = "zos",
-    ):
+):
 
     logger.info(f"Starting Script")
     logger.info(f"Model: {model}")
@@ -212,16 +212,16 @@ def psd_spacetime_run_postanalysis(
     da = da.astype(np.float32)
 
     logger.info("Running Zonal PSD")
-    psd_iso_signal = zonal_lon_psd(da)
+    psd_st_signal = space_time_psd(da)
 
     logger.info("Saving Data...")
-    psd_iso_signal.name = imodel.name
-    path = Path("/home/onyxia/work/OceanBenchFigures/psd/zonal_lon/data")
+    psd_st_signal.name = model
+    path = Path(f"{autoroot.root.joinpath('data/psd/spacetime')}")
     path.mkdir(parents=True, exist_ok=True)
-    save_name = Path(f"psd_zonallon_global_{ivariable.name}_{imodel.name}_z{idepth}.nc")
+    save_name = Path(f"psd_spacetime_global_{variable}_{model}_z{idepth}.nc")
     save_name = path.joinpath(save_name)
     logger.debug(f"Saved path: {save_name}")
-    psd_iso_signal.to_netcdf(str(save_name))
+    psd_st_signal.to_netcdf(str(save_name))
 
     logger.success("Finished script!")
 
