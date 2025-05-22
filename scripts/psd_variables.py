@@ -116,6 +116,7 @@ def psd_zonal_run_postanalysis(
     logger.info(f"Model: {model}")
     logger.info(f"Variable: {variable}")
     logger.info(f"Save Path: {save_path}")
+    logger.info(f"Region: {region}")
 
     # Usage in the command:
     da, idepth = load_and_preprocess_dataset(model, variable, region)
@@ -148,6 +149,7 @@ def psd_zonal_run_plots(
     logger.info(f"Starting Script")
     logger.info(f"Variable: {variable}")
     logger.info(f"Save Path: {save_path}")
+    logger.info(f"Region: {region}")
     if save_path is None:
         path = Path(f"{autoroot.root.joinpath('data/psd/zonallon')}")
     else:
