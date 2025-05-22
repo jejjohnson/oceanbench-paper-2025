@@ -1,0 +1,38 @@
+name: oceanbench
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - numpy
+  - xarray
+  - matplotlib
+  - cmocean
+  - pandas
+  - cartopy
+  - seaborn
+  - copernicusmarine
+  - xrft
+  - scipy
+  - metpy
+  # only for dev
+  - htop
+  - notebook
+  - jupyterlab
+  - ipykernel
+  - nb_conda_kernels
+  - pip
+  - pip:
+    # only for dev
+    - autoroot
+    - python-dotenv
+    - fsspec
+    - tqdm
+    - loguru
+    - cyclopts
+    - toml
+    - black
+    - isort
+    - ruff
+    - aiohttp
+    - requests
