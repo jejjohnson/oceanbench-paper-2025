@@ -34,7 +34,33 @@ def zonal_lon_psd(da: xr.DataArray) -> xr.DataArray:
         )
     
         # average other dims
-        psd_iso_signal = xr_cond_average(psd_iso_signal, dims=["time", "lat"], drop=True,).compute()
+        psd_iso_signal = psd_iso_signal.mean(dim=["time", "lat"], skipna=True)
+        psd_iso_signal = psd_iso_signal.sel(freq_lon=psd_iso_signal["freq_lon"] > 0).compute()
+    return psd_iso_signal
+
+
+def isotropic_psd(da: xr.DataArray) -> xr.DataArray:
+    with ProgressBar():
+    
+        # frequency dims
+        psd_iso_signal = xrft.isotropic_power_spectrum(
+            da.chunk({
+                "time": 1,
+                "lon": da.lon.shape[0], 
+                "lat": da.lat.shape[0], }),
+            dim=["lon", "lat"],
+            detrend="linear",
+            window="tukey",
+            nfactor=2,
+            window_correction=True,
+            true_amplitude=True,
+            truncate=True,
+        )
+    
+        # average other dims
+        psd_iso_signal = psd_iso_signal.mean(dim=["time", ], skipna=True)
+        psd_iso_signal = psd_iso_signal.sel(freq_r=psd_iso_signal["freq_r"] > 0).compute()
+    psd_iso_signal.name = da.name
     return psd_iso_signal
 
 def space_time_psd(da: xr.DataArray) -> xr.DataArray:
@@ -54,9 +80,19 @@ def space_time_psd(da: xr.DataArray) -> xr.DataArray:
             true_amplitude=True,
             truncate=True,
         )
+        
+
     
         # average other dims
-        psd_iso_signal = xr_cond_average(psd_iso_signal, dims=["lat"], drop=True,).compute()
+        psd_iso_signal = psd_iso_signal.mean(dim=["lat"], skipna=True)
+        
+        # drop frequency dims with negative frequenies
+        psd_iso_signal = psd_iso_signal.sel(freq_lon=psd_iso_signal["freq_lon"] > 0)
+        psd_iso_signal = psd_iso_signal.sel(freq_time=psd_iso_signal["freq_time"] > 0)
+        
+        psd_iso_signal = psd_iso_signal.compute()
+        
+    psd_iso_signal.name = da.name
     return psd_iso_signal
 
 
@@ -276,3 +312,131 @@ class PlotPSDSpaceTime:
         )
         self.ax.xaxis.set_major_formatter("{x:.0f}")
         self.ax.yaxis.set_major_formatter("{x:.0f}")
+
+
+class PlotPSDFreqVariable:
+    def init_fig(self, ax=None, figsize=None,):
+        if ax is None:
+            figsize = (5,4) if figsize is None else figsize
+            self.fig, self.ax = plt.subplots(figsize=figsize)
+        else:
+            self.ax = ax
+            self.fig = plt.gcf()
+        
+    def plot_wavenumber(
+        self, 
+        da, 
+        variable: str,
+        freq_scale: float=1.0,
+        freq_units: str="m",
+        var_units: str=None,
+        psd_units: float=None,
+        **kwargs):
+        
+        if freq_units is not None:
+            xlabel = f"Wavenumber [cycles/{freq_units}]"
+        else:
+            xlabel = f"Wavenumber"
+            
+        var_name = da[variable].attrs.get("long_name", "")
+        if var_units is not None:
+            
+            ylabel = var_name + f" [{var_units}]"
+        else:
+            ylabel = var_name
+
+        if psd_units is None:
+            cbar_label = "PSD"
+        else:
+            cbar_label = f"PSD [{psd_units}]"
+            
+        vmin = kwargs.pop("vmin", None)
+        vmax = kwargs.pop("vmax", None)
+        
+        locator = ticker.LogLocator()
+        norm = colors.LogNorm(vmin=vmin, vmax=vmax)
+        
+        
+        pts = self.ax.contourf(
+            1/(da.freq_lon*freq_scale),
+            da[variable], 
+            da.transpose(variable, "freq_lon"), 
+            norm=norm, 
+            locator=locator, 
+            cmap=kwargs.pop("cmap", "RdYlGn"), 
+            extend=kwargs.pop("extend", "both"),
+            vmin=vmin, vmax=vmax,
+            **kwargs
+        )
+
+        self.ax.set(
+            xscale="log",
+            xlabel=xlabel,
+            ylabel=ylabel,
+            
+        )
+        # colorbar
+        fmt = ticker.LogFormatterMathtext(base=10)
+        cbar = plt.colorbar(
+            pts,
+            ax=self.ax,
+            pad=0.02,
+            format=fmt,
+            extend=True,
+            norm=norm
+            
+        )
+        cbar.ax.set_ylabel(cbar_label)
+        self.ax.invert_xaxis()
+        self.ax.grid(which="both", linestyle="--", linewidth=1, color="black", alpha=0.2)
+
+    def plot_wavelength(        
+        self, 
+        da,
+        variable: str,
+        freq_scale: float=1.0,
+        freq_units: str="m",
+        var_units: str=None,
+        psd_units: float=None,
+        **kwargs):
+    
+        if freq_units is not None:
+            xlabel = f"Wavelength [{freq_units}]"
+        else:
+            xlabel = f"Wavelength"
+            
+        var_name = da[variable].attrs.get("long_name", "")
+        if var_units is not None:
+            
+            ylabel = var_name + f" [{var_units}]"
+        else:
+            ylabel = var_name
+
+        if psd_units is None:
+            cbar_label = "PSD"
+        else:
+            cbar_label = f"PSD [{psd_units}]"
+            
+        if psd_units is None:
+            cbar_label = "PSD"
+        else:
+            cbar_label = f"PSD [{psd_units}]"
+            
+        self.plot_wavenumber(
+            da=da, 
+            variable=variable,
+            freq_scale=freq_scale,
+            freq_units=freq_units, 
+            var_units=var_units,
+            psd_units=psd_units,
+            **kwargs
+        )
+
+        self.ax.set(
+            xlabel=xlabel, 
+            ylabel=ylabel
+        )
+        self.ax.xaxis.set_major_formatter("{x:.0f}")
+        self.ax.yaxis.set_major_formatter("{x:.0f}")
+
+

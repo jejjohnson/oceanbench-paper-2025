@@ -8,6 +8,27 @@ from metpy.units import units
 from functools import reduce
 
 
+def region(ds, region: str = "globe"):
+    
+    if region:
+        if region == "globe":
+            return ds
+        if region == "zonallon":
+            return ds.sel(lat=slice(30, 60))
+        elif region == "gulfstream":
+            return ds.sel(lon=slice(-80, -50), lat=slice(30, 45))
+        elif region == "gulfstreamsubset":
+            return ds.sel(lon=slice(-65, -55), lat=slice(33, 43))
+        elif region == "northhemisphere":
+            return ds.where(ds.lat > 0.0, drop=True)
+        elif region == "southhemisphere":
+            return ds.where(ds.lat < 0.0, drop=True)
+        elif region == "tropics":
+            return ds.where((ds.lat > -30.0) & (ds.lat < 30.0), drop=True)
+        else:
+            raise ValueError(f"Unknown region: {region}")
+
+
 def xr_cond_average(
     ds: xr.Dataset, dims: List[str] = None, drop: bool = True
 ) -> xr.Dataset:
