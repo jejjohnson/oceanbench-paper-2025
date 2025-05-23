@@ -1,9 +1,15 @@
 # oceanbench-paper-2025
 
 
+### Clone the Repo
+
+```bash
+git clone ...
+```
 
 
-**Create a new environemnt**
+
+### **Create a new environemnt**
 
 ```bash
 conda env create -f environment.yaml -n base
@@ -20,10 +26,20 @@ conda env update -f environment.yaml -n base
 
 
 ---
-## Run Scripts for Plots
+### Run Scripts for Plots
 
 
 #### **Forecast Maps**
+
+> These are just the forecasts maps for the models of all variables.
+
+```bash
+bash scripts/plot_maps.sh
+```
+
+#### **RMSE Forecast Maps**
+
+> 
 
 ```bash
 bash scripts/plot_maps.sh

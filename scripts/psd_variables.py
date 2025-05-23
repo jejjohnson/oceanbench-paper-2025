@@ -44,6 +44,7 @@ def load_and_preprocess_dataset(
     model: str,
     variable: str,
     region: str,
+    lead_time: int = 0,
     year: int = 2024,
     idepth: int = 0,
     fill_value: float = 0.0,
@@ -74,7 +75,7 @@ def load_and_preprocess_dataset(
         except ValueError:
             pass
         # select the first time step
-        t0 = ds.isel(time=0).time.expand_dims()
+        t0 = ds.isel(time=lead_time).time.expand_dims()
         # rename time to lead time
         ds = ds.rename({"time": "lead_time"})
         # expand dimensions
@@ -109,6 +110,7 @@ def psd_zonal_run_postanalysis(
     model: str = "glo12",
     variable: str = "zos",
     save_path: str | None = None,
+    lead_time: int = 0,
     region: str = "gulfstream",
 ):
 
@@ -117,9 +119,10 @@ def psd_zonal_run_postanalysis(
     logger.info(f"Variable: {variable}")
     logger.info(f"Save Path: {save_path}")
     logger.info(f"Region: {region}")
+    logger.info(f"Lead Time: {lead_time}")
 
     # Usage in the command:
-    da, idepth = load_and_preprocess_dataset(model, variable, region)
+    da, idepth = load_and_preprocess_dataset(model, variable, region, lead_time=lead_time)
 
     logger.info("Running Zonal PSD")
     psd_iso_signal = zonal_lon_psd(da)
@@ -131,7 +134,7 @@ def psd_zonal_run_postanalysis(
     else:
         path = Path(f"{Path(save_path).joinpath('data/psd/zonallon')}")
     path.mkdir(parents=True, exist_ok=True)
-    save_name = Path(f"psd_zonallon_{region}_{variable}_{model}_z{idepth}.nc")
+    save_name = Path(f"psd_zonallon_{region}_{variable}_{model}_l{lead_time}_z{idepth}.nc")
     save_name = path.joinpath(save_name)
     logger.debug(f"Saved path: {save_name}")
     psd_iso_signal.to_netcdf(str(save_name))
@@ -144,12 +147,14 @@ def psd_zonal_run_plots(
     variable: str = "zos",
     save_path: str | None = None,
     region: str = "gulfstream",
+    lead_time: int = 0,
 ):
     models = ["glorys12", "glo12", "glonet", "wenhai", "xihe"]
     logger.info(f"Starting Script")
     logger.info(f"Variable: {variable}")
     logger.info(f"Save Path: {save_path}")
     logger.info(f"Region: {region}")
+    logger.info(f"Lead Time: {lead_time}")
     if save_path is None:
         path = Path(f"{autoroot.root.joinpath('data/psd/zonallon')}")
     else:
@@ -160,7 +165,6 @@ def psd_zonal_run_plots(
     forecast_config = ForecastDataset()
 
     idepth = 0
-    ilead = 0
 
     from src.psd import PlotPSDIsotropic
 
@@ -185,7 +189,7 @@ def psd_zonal_run_plots(
             config = forecast_config.models[imodel]
             da = da[imodel]
             psd_iso_plot.plot_wavelength(
-                da.isel(lead_time=ilead),
+                da.isel(lead_time=lead_time),
                 freq_scale=1e3,
                 units="km",
                 label=config.name.upper(),
@@ -198,7 +202,7 @@ def psd_zonal_run_plots(
         path = Path(f"{Path(save_path).joinpath('figures/psd/zonallon')}")
     psd_iso_plot.ax.invert_xaxis()
     path.mkdir(parents=True, exist_ok=True)
-    save_name = Path(f"psd_{region}_{variable}_z{idepth}_l{ilead}.png")
+    save_name = Path(f"psd_{region}_{variable}_z{idepth}_l{lead_time}.png")
     save_name = path.joinpath(save_name)
     psd_iso_plot.fig.savefig(save_name, bbox_inches="tight", transparent=True)
     # plt.close()

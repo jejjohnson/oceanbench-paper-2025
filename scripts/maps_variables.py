@@ -468,7 +468,7 @@ def run_map_plotter_forecast_error(
                 cbar_kwargs=cbar_kwargs, vmin=0.0, vmax=vmax, levels=None
             )
             fig.set(dpi=300)
-            path = Path(f"{autoroot.root.joinpath('figures/maps/errors/forecast')}")
+            path = autoroot.root.joinpath(f'figures/maps/errors/forecast/{variable}')
             path.mkdir(parents=True, exist_ok=True)
             save_name = Path(
                 f"maps_global_rmse_{variable}_m{imodel.name}_t{date}_l{lead_time+1}_z{idepth:.2f}.png"
